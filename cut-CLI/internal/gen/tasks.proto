@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package tasks;
+
+option go_package = "./tasks";
+
+service DistributedCut {
+  rpc ProcessTask(ProcessTaskRequest) returns (ProcessTaskResponse) {}
+}
+
+message ProcessTaskRequest {
+  repeated string lines = 1;
+  CutOptions options = 2;
+}
+
+message CutOptions {
+  repeated int32 fields = 1;
+  string delimiter = 2;
+  bool separated = 3;
+}
+
+message StringArray {
+  repeated string items = 1;
+}
+
+message ProcessTaskResponse {
+  repeated StringArray result = 1;
+}

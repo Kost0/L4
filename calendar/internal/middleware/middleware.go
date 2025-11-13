@@ -1,12 +1,12 @@
 package middleware
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 	"time"
 )
 
-func Middleware(handler http.Handler) http.Handler {
+func (l *Logger) Middleware(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
@@ -14,6 +14,8 @@ func Middleware(handler http.Handler) http.Handler {
 
 		duration := time.Since(start)
 
-		log.Printf("%s %s %s", r.Method, r.URL.Path, duration)
+		logStr := fmt.Sprintf("%s %s %s", r.Method, r.URL.Path, duration)
+
+		l.Ch <- logStr
 	})
 }

@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS events;
+DPOR TABLE IF EXISTS archive;

@@ -1,54 +1,103 @@
 package main
 
 import (
-	"L2/18/handlers"
-	"L2/18/middleware"
+	"context"
 	"errors"
-	"flag"
-	"fmt"
+	"os/signal"
+	"sync"
+	"syscall"
+
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/Kost0/L4/internal/business"
+	"github.com/Kost0/L4/internal/collector"
+	"github.com/Kost0/L4/internal/handlers"
+	"github.com/Kost0/L4/internal/middleware"
+	"github.com/Kost0/L4/internal/models"
+	"github.com/Kost0/L4/internal/reminder"
+	"github.com/Kost0/L4/internal/repository"
 
 	"github.com/go-chi/chi/v5"
 )
 
 func main() {
-	port := flag.String("port", "8080", "port to listen on")
-
-	flag.Parse()
-
-	envPort := os.Getenv("PORT")
-
-	if envPort != "" {
-		port = &envPort
+	db, err := repository.ConnectDB()
+	if err != nil {
+		panic(err)
 	}
 
-	address := fmt.Sprintf(":%s", *port)
+	err = repository.RunMigrations(db, "events_db")
+	if err != nil {
+		panic(err)
+	}
+
+	eventRepository := business.EventRepository{
+		DB: db,
+	}
+
+	ch := make(chan *models.Event)
+
+	logCh := make(chan string)
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	col := collector.Collector{
+		DB: db,
+	}
+
+	logger := middleware.Logger{
+		Ch: logCh,
+	}
+
+	wg := &sync.WaitGroup{}
+
+	wg.Add(3)
+
+	go logger.StartLogger(ctx, wg)
+
+	go col.StartCollector(ctx, wg)
+
+	go reminder.Worker(ctx, ch, wg)
+
+	handler := handlers.Handler{
+		Ch:    ch,
+		LogCh: logCh,
+		Rep:   &eventRepository,
+	}
 
 	r := chi.NewRouter()
 
 	srv := &http.Server{
-		Addr:    address,
+		Addr:    ":8080",
 		Handler: r,
 	}
 
-	r.Use(middleware.Middleware)
+	r.Use(logger.Middleware)
 
-	r.Post("/delete_event", handlers.DeleteEvent)
+	r.Post("/delete_event", handler.DeleteEvent)
 
-	r.Post("/update_event", handlers.UpdateEvent)
+	r.Post("/update_event", handler.UpdateEvent)
 
-	r.Post("/create_event", handlers.CreateEvent)
+	r.Post("/create_event", handler.CreateEvent)
 
-	r.Get("/events_for_day", handlers.GetEventForDay)
+	r.Get("/events_for_day", handler.GetEventForDay)
 
-	r.Get("/events_for_week", handlers.GetEventForWeek)
+	r.Get("/events_for_week", handler.GetEventForWeek)
 
-	r.Get("/events_for_month", handlers.GetEventForMonth)
+	r.Get("/events_for_month", handler.GetEventForMonth)
 
 	log.Println("Starting HTTP server...")
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatalf("Error starting HTTP server: %v\n", err)
-	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("Error starting HTTP server: %v\n", err)
+		}
+	}()
+
+	wg.Wait()
 }

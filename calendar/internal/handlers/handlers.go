@@ -1,15 +1,22 @@
 package handlers
 
 import (
-	"L2/18/business"
-	"L2/18/models"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/Kost0/L4/internal/business"
+	"github.com/Kost0/L4/internal/models"
 )
+
+type Handler struct {
+	Ch    chan *models.Event
+	LogCh chan string
+	Rep   *business.EventRepository
+}
 
 type result struct {
 	Res []*models.Event `json:"result"`
@@ -21,11 +28,12 @@ func newResult(res []*models.Event, w http.ResponseWriter) {
 	buf, err := json.Marshal(&newRes)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	_, err = w.Write(buf)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -39,21 +47,22 @@ func newEventErr(err error, w http.ResponseWriter) {
 	buf, err := json.Marshal(evErr)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-	}
-
-	_, err = w.Write(buf)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	if strings.Contains(evErr.ErrString, "not found") {
 		w.WriteHeader(http.StatusServiceUnavailable)
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
 	}
 
-	w.WriteHeader(http.StatusBadRequest)
+	_, err = w.Write(buf)
+	if err != nil {
+		return
+	}
 }
 
-func CreateEvent(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		newEventErr(err, w)
@@ -67,17 +76,22 @@ func CreateEvent(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	event, err := business.NewEvent(buf)
+	event, err := h.Rep.NewEvent(buf)
 	if err != nil {
 		newEventErr(err, w)
+		return
 	}
+
+	h.Ch <- event
 
 	newResult([]*models.Event{event}, w)
 
 	w.WriteHeader(http.StatusOK)
 }
 
-func UpdateEvent(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateEvent(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		newEventErr(err, w)
@@ -86,12 +100,14 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request) {
 		err = r.Body.Close()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 	}()
 
-	event, err := business.UpdateEvent(buf)
+	event, err := h.Rep.UpdateEvent(buf, id)
 	if err != nil {
 		newEventErr(err, w)
+		return
 	}
 
 	newResult([]*models.Event{event}, w)
@@ -99,32 +115,23 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func DeleteEvent(w http.ResponseWriter, r *http.Request) {
-	buf, err := ioutil.ReadAll(r.Body)
+func (h *Handler) DeleteEvent(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+
+	err := h.Rep.DeleteEvent(id)
 	if err != nil {
 		newEventErr(err, w)
+		return
 	}
-	defer func() {
-		err = r.Body.Close()
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}()
-
-	event, err := business.DeleteEvent(buf)
-	if err != nil {
-		newEventErr(err, w)
-	}
-
-	newResult([]*models.Event{event}, w)
 
 	w.WriteHeader(http.StatusOK)
 }
 
-func GetEventForDay(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetEventForDay(w http.ResponseWriter, r *http.Request) {
 	parsedURL, err := url.Parse(r.RequestURI)
 	if err != nil {
 		newEventErr(err, w)
+		return
 	}
 
 	queryParams := parsedURL.Query()
@@ -137,11 +144,13 @@ func GetEventForDay(w http.ResponseWriter, r *http.Request) {
 	day, err := time.Parse(layout, date)
 	if err != nil {
 		newEventErr(err, w)
+		return
 	}
 
-	necessaryEvents, err := business.FindEventForTime(day, user, time.Hour*24)
+	necessaryEvents, err := h.Rep.FindEventsForTime(day, user, 1)
 	if err != nil {
 		newEventErr(err, w)
+		return
 	}
 
 	newResult(necessaryEvents, w)
@@ -149,7 +158,7 @@ func GetEventForDay(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func GetEventForWeek(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetEventForWeek(w http.ResponseWriter, r *http.Request) {
 	parsedURL, err := url.Parse(r.RequestURI)
 	if err != nil {
 		newEventErr(err, w)
@@ -165,18 +174,20 @@ func GetEventForWeek(w http.ResponseWriter, r *http.Request) {
 	day, err := time.Parse(layout, date)
 	if err != nil {
 		newEventErr(err, w)
+		return
 	}
 
-	necessaryEvents, err := business.FindEventForTime(day, user, time.Hour*24*7)
+	necessaryEvents, err := h.Rep.FindEventsForTime(day, user, 7)
 	if err != nil {
 		newEventErr(err, w)
+		return
 	}
 	newResult(necessaryEvents, w)
 
 	w.WriteHeader(http.StatusOK)
 }
 
-func GetEventForMonth(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetEventForMonth(w http.ResponseWriter, r *http.Request) {
 	parsedURL, err := url.Parse(r.RequestURI)
 	if err != nil {
 		newEventErr(err, w)
@@ -192,11 +203,13 @@ func GetEventForMonth(w http.ResponseWriter, r *http.Request) {
 	day, err := time.Parse(layout, date)
 	if err != nil {
 		newEventErr(err, w)
+		return
 	}
 
-	necessaryEvents, err := business.FindEventForTime(day, user, time.Hour*24*30)
+	necessaryEvents, err := h.Rep.FindEventsForTime(day, user, 30)
 	if err != nil {
 		newEventErr(err, w)
+		return
 	}
 
 	newResult(necessaryEvents, w)

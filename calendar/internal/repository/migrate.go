@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -8,12 +9,10 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
-	"github.com/wb-go/wbf/dbpg"
-	"github.com/wb-go/wbf/zlog"
 )
 
-func RunMigrations(db *dbpg.DB, dbName string) error {
-	driver, err := postgres.WithInstance(db.Master, &postgres.Config{})
+func RunMigrations(db *sql.DB, dbName string) error {
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
 		return fmt.Errorf("could not create migration driver: %w", err)
 	}
@@ -30,8 +29,6 @@ func RunMigrations(db *dbpg.DB, dbName string) error {
 	if err = m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("could not apply migration: %w", err)
 	}
-
-	zlog.Logger.Info().Msg("migration successfully applied in database: " + dbName)
 
 	return nil
 }

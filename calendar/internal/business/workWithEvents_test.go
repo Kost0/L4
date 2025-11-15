@@ -1,10 +1,11 @@
 package business
 
 import (
-	"L2/18/models"
 	"encoding/json"
 	"testing"
 	"time"
+
+	"github.com/Kost0/L4/internal/models"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -176,7 +177,7 @@ func TestFindEventForTime_Success_Day(t *testing.T) {
 	date, err := time.Parse("2006-01-02", models.Events[0].Date)
 	assert.NoError(t, err)
 
-	events, err := FindEventForTime(date, "1", time.Hour*24)
+	events, err := FindEventsForTime(date, "1", time.Hour*24)
 	assert.NoError(t, err)
 	assert.Equal(t, models.Events, events)
 }
@@ -198,7 +199,7 @@ func TestFindEventForTime_Success_Week(t *testing.T) {
 	date, err := time.Parse("2006-01-02", models.Events[0].Date)
 	assert.NoError(t, err)
 
-	events, err := FindEventForTime(date, "1", time.Hour*24*7)
+	events, err := FindEventsForTime(date, "1", time.Hour*24*7)
 	assert.NoError(t, err)
 	assert.Equal(t, models.Events, events)
 }
@@ -225,7 +226,7 @@ func TestFindEventForTime_Success_Month(t *testing.T) {
 	date, err := time.Parse("2006-01-02", models.Events[0].Date)
 	assert.NoError(t, err)
 
-	events, err := FindEventForTime(date, "1", time.Hour*24*30)
+	events, err := FindEventsForTime(date, "1", time.Hour*24*30)
 	assert.NoError(t, err)
 	assert.Equal(t, models.Events, events)
 }
@@ -239,7 +240,7 @@ func TestFindEventForTime_WrongDate(t *testing.T) {
 
 	date := time.Now()
 
-	events, err := FindEventForTime(date, "1", time.Hour*24)
+	events, err := FindEventsForTime(date, "1", time.Hour*24)
 	assert.Error(t, err)
 	assert.Nil(t, events)
 }

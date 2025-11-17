@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/Kost0/L4/internal/models"
@@ -79,6 +80,8 @@ func (e *EventRepository) UpdateEvent(buf []byte, id string) (*models.Event, err
 		if err != nil {
 			return nil, err
 		}
+
+		return event, nil
 	}
 
 	return nil, errors.New("event not found")
@@ -99,11 +102,25 @@ func (e *EventRepository) DeleteEvent(id string) error {
 		if err != nil {
 			return err
 		}
+
+		return nil
 	}
 
 	return errors.New("event not found")
 }
 
 func (e *EventRepository) FindEventsForTime(date time.Time, userID string, days int) ([]*models.Event, error) {
-	return repository.GetEventsByDate(e.DB, date, days, userID)
+	day := date.Truncate(24 * time.Hour)
+	return repository.GetEventsByDate(e.DB, day, days, userID)
+}
+
+func (e *EventRepository) WakeUp() {
+	var err error
+
+	models.Events, err = repository.GetAllEvents(e.DB)
+	if err != nil {
+		log.Println(err)
+	}
+
+	log.Printf("%d events will be waked", len(models.Events))
 }

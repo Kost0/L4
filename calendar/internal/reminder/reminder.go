@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"context"
 	"log"
+	"math"
 	"sync"
 	"time"
 
@@ -38,7 +39,7 @@ func Worker(ctx context.Context, ch chan *models.Event, wg *sync.WaitGroup) {
 		case <-timerChan:
 			event := heap.Pop(eventHeap).(*models.Event)
 
-			log.Printf("Напоминание, до события %s осталось %v минут(а)", event.Event, time.Until(event.Date).Minutes())
+			log.Printf("Напоминание, до события %s осталось %v минут(а)", event.Event, math.Ceil(time.Until(event.Date).Minutes()))
 
 			if eventHeap.Len() > 0 {
 				nextEvent := (*eventHeap)[0]
@@ -48,6 +49,7 @@ func Worker(ctx context.Context, ch chan *models.Event, wg *sync.WaitGroup) {
 				timerChan = nil
 			}
 		case <-ctx.Done():
+			log.Println("context done, worker stopped")
 			return
 		}
 	}

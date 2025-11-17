@@ -18,6 +18,7 @@ func (l *Logger) StartLogger(ctx context.Context, wg *sync.WaitGroup) {
 		case logStr := <-l.Ch:
 			log.Println(logStr)
 		case <-ctx.Done():
+			log.Println("context done, logger stopped")
 			return
 		}
 	}

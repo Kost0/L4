@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"log"
 	"net/http"
@@ -36,6 +37,8 @@ func main() {
 	eventRepository := business.EventRepository{
 		DB: db,
 	}
+
+	eventRepository.WakeUp()
 
 	ch := make(chan *models.Event)
 
@@ -99,5 +102,17 @@ func main() {
 		}
 	}()
 
+	<-ctx.Done()
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	if err = srv.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("Error shutting down HTTP server: %v\n", err)
+	} else {
+		log.Println("context done, HTTP server stopped")
+	}
+
 	wg.Wait()
+	log.Println("All goroutines stopped. Application fully terminated.")
 }

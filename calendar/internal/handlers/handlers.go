@@ -84,9 +84,8 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 
 	h.Ch <- event
 
-	newResult([]*models.Event{event}, w)
-
 	w.WriteHeader(http.StatusOK)
+	newResult([]*models.Event{event}, w)
 }
 
 func (h *Handler) UpdateEvent(w http.ResponseWriter, r *http.Request) {
@@ -110,9 +109,8 @@ func (h *Handler) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newResult([]*models.Event{event}, w)
-
 	w.WriteHeader(http.StatusOK)
+	newResult([]*models.Event{event}, w)
 }
 
 func (h *Handler) DeleteEvent(w http.ResponseWriter, r *http.Request) {
@@ -125,6 +123,7 @@ func (h *Handler) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Event deleted"))
 }
 
 func (h *Handler) GetEventForDay(w http.ResponseWriter, r *http.Request) {
@@ -136,26 +135,23 @@ func (h *Handler) GetEventForDay(w http.ResponseWriter, r *http.Request) {
 
 	queryParams := parsedURL.Query()
 
-	date := queryParams.Get("date")
+	dateStr := queryParams.Get("date")
 	user := queryParams.Get("user_id")
 
-	layout := "2006-01-02"
-
-	day, err := time.Parse(layout, date)
+	date, err := time.Parse(time.RFC3339, dateStr)
 	if err != nil {
 		newEventErr(err, w)
 		return
 	}
 
-	necessaryEvents, err := h.Rep.FindEventsForTime(day, user, 1)
+	necessaryEvents, err := h.Rep.FindEventsForTime(date, user, 1)
 	if err != nil {
 		newEventErr(err, w)
 		return
 	}
-
-	newResult(necessaryEvents, w)
 
 	w.WriteHeader(http.StatusOK)
+	newResult(necessaryEvents, w)
 }
 
 func (h *Handler) GetEventForWeek(w http.ResponseWriter, r *http.Request) {
@@ -166,25 +162,23 @@ func (h *Handler) GetEventForWeek(w http.ResponseWriter, r *http.Request) {
 
 	queryParams := parsedURL.Query()
 
-	date := queryParams.Get("date")
+	dateStr := queryParams.Get("date")
 	user := queryParams.Get("user_id")
 
-	layout := "2006-01-02"
-
-	day, err := time.Parse(layout, date)
+	date, err := time.Parse(time.RFC3339, dateStr)
 	if err != nil {
 		newEventErr(err, w)
 		return
 	}
 
-	necessaryEvents, err := h.Rep.FindEventsForTime(day, user, 7)
+	necessaryEvents, err := h.Rep.FindEventsForTime(date, user, 7)
 	if err != nil {
 		newEventErr(err, w)
 		return
 	}
-	newResult(necessaryEvents, w)
 
 	w.WriteHeader(http.StatusOK)
+	newResult(necessaryEvents, w)
 }
 
 func (h *Handler) GetEventForMonth(w http.ResponseWriter, r *http.Request) {
@@ -195,24 +189,21 @@ func (h *Handler) GetEventForMonth(w http.ResponseWriter, r *http.Request) {
 
 	queryParams := parsedURL.Query()
 
-	date := queryParams.Get("date")
+	dateStr := queryParams.Get("date")
 	user := queryParams.Get("user_id")
 
-	layout := "2006-01-02"
-
-	day, err := time.Parse(layout, date)
+	date, err := time.Parse(time.RFC3339, dateStr)
 	if err != nil {
 		newEventErr(err, w)
 		return
 	}
 
-	necessaryEvents, err := h.Rep.FindEventsForTime(day, user, 30)
+	necessaryEvents, err := h.Rep.FindEventsForTime(date, user, 30)
 	if err != nil {
 		newEventErr(err, w)
 		return
 	}
-
-	newResult(necessaryEvents, w)
 
 	w.WriteHeader(http.StatusOK)
+	newResult(necessaryEvents, w)
 }

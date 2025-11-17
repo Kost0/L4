@@ -49,7 +49,7 @@ func DeleteEvent(db *sql.DB, id string) error {
 func GetEventsByDate(db *sql.DB, date time.Time, days int, userID string) ([]*models.Event, error) {
 	query := `
 	SELECT * FROM events
-	WHERE user_id = $1 && date BETWEEN $2 AND $3
+	WHERE user_id = $1 AND date BETWEEN $2 AND $3
 `
 	end := date.AddDate(0, 0, days)
 
@@ -89,4 +89,34 @@ func InsertToArchive(db *sql.DB, event models.Event) error {
 	}
 
 	return nil
+}
+
+func GetAllEvents(db *sql.DB) ([]*models.Event, error) {
+	query := `
+SELECT * FROM events
+`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	events := []*models.Event{}
+
+	for rows.Next() {
+		event := models.Event{}
+		err = rows.Scan(
+			&event.EventID,
+			&event.UserID,
+			&event.Date,
+			&event.Event,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		events = append(events, &event)
+	}
+
+	return events, nil
 }

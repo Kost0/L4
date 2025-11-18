@@ -43,8 +43,6 @@ func (e *EventRepository) NewEvent(buf []byte) (*models.Event, error) {
 
 	models.Events = append(models.Events, event)
 
-	log.Printf("Appended event %v", event)
-
 	err = repository.InsertEvent(e.DB, *event)
 	if err != nil {
 		return nil, err
@@ -79,10 +77,6 @@ func (e *EventRepository) UpdateEvent(buf []byte, id string) (*models.Event, err
 	}
 
 	hit := false
-
-	for _, ev := range models.Events {
-		log.Printf("events: %v", ev)
-	}
 
 	for i, ev := range models.Events {
 		if ev.EventID == event.EventID {

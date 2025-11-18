@@ -13,7 +13,7 @@ import (
 
 var (
 	userID = uuid.New()
-	date   = time.Now()
+	date   = time.Now().Add(time.Hour)
 	repo   = EventRepository{DB: nil}
 )
 
@@ -73,7 +73,9 @@ func TestUpdateEvent_Success(t *testing.T) {
 		}
 	}()
 
-	repo.UpdateEvent(buf, models.Events[0].EventID.String())
+	ch := make(chan *models.Event, 1)
+
+	repo.UpdateEvent(buf, models.Events[0].EventID.String(), ch)
 }
 
 func TestUpdateEvent_NothingToUpdate(t *testing.T) {
@@ -87,7 +89,9 @@ func TestUpdateEvent_NothingToUpdate(t *testing.T) {
 	buf, err := json.Marshal(event)
 	assert.NoError(t, err)
 
-	updatedEvent, err := repo.UpdateEvent(buf, "1")
+	ch := make(chan *models.Event, 1)
+
+	updatedEvent, err := repo.UpdateEvent(buf, "1", ch)
 	assert.Error(t, err)
 	assert.Nil(t, updatedEvent)
 }
@@ -108,7 +112,9 @@ func TestUpdateEvent_WrongStruct(t *testing.T) {
 	buf, err := json.Marshal(event)
 	assert.NoError(t, err)
 
-	updatedEvent, err := repo.UpdateEvent(buf, "1")
+	ch := make(chan *models.Event, 1)
+
+	updatedEvent, err := repo.UpdateEvent(buf, "1", ch)
 	assert.Error(t, err)
 	assert.Nil(t, updatedEvent)
 }

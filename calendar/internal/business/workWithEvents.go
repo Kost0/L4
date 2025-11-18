@@ -35,6 +35,7 @@ func (e *EventRepository) NewEvent(buf []byte) (*models.Event, error) {
 		Date:     eventDTO.Date,
 		RemindAt: eventDTO.Date.Add(-2 * time.Hour),
 		Event:    eventDTO.Event,
+		Deleted:  false,
 	}
 
 	if event.Date.Before(time.Now()) {
@@ -51,7 +52,7 @@ func (e *EventRepository) NewEvent(buf []byte) (*models.Event, error) {
 	return event, nil
 }
 
-func (e *EventRepository) UpdateEvent(buf []byte, id string) (*models.Event, error) {
+func (e *EventRepository) UpdateEvent(buf []byte, id string, ch chan *models.Event) (*models.Event, error) {
 	eventDTO := &models.EventDTO{}
 
 	decoder := json.NewDecoder(bytes.NewReader(buf))
@@ -74,12 +75,17 @@ func (e *EventRepository) UpdateEvent(buf []byte, id string) (*models.Event, err
 		Date:     eventDTO.Date,
 		RemindAt: eventDTO.Date.Add(-2 * time.Hour),
 		Event:    eventDTO.Event,
+		Deleted:  false,
 	}
 
 	hit := false
 
 	for i, ev := range models.Events {
 		if ev.EventID == event.EventID {
+			if ev.Date != event.Date {
+				ev.Deleted = true
+				ch <- event
+			}
 			models.Events[i] = event
 			hit = true
 			break
@@ -103,6 +109,7 @@ func (e *EventRepository) DeleteEvent(id string) error {
 
 	for i, ev := range models.Events {
 		if ev.EventID.String() == id {
+			ev.Deleted = true
 			models.Events = append(models.Events[:i], models.Events[i+1:]...)
 			hit = true
 		}

@@ -109,7 +109,7 @@ func (h *Handler) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	event, err := h.Rep.UpdateEvent(buf, id)
+	event, err := h.Rep.UpdateEvent(buf, id, h.Ch)
 	if err != nil {
 		newEventErr(err, w)
 		return

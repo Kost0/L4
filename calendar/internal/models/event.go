@@ -12,6 +12,7 @@ type Event struct {
 	Date     time.Time `json:"date"`
 	RemindAt time.Time `json:"-"`
 	Event    string    `json:"event"`
+	Deleted  bool      `json:"-"`
 }
 
 type EventDTO struct {

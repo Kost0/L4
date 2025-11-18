@@ -30,7 +30,10 @@ func Worker(ctx context.Context, ch chan *models.Event, wg *sync.WaitGroup) {
 				timer = time.NewTimer(time.Until(earliestTask.RemindAt))
 			} else {
 				if !timer.Stop() {
-					<-timer.C
+					select {
+					case <-timer.C:
+					default:
+					}
 				}
 				timer.Reset(time.Until(earliestTask.RemindAt))
 			}
@@ -39,7 +42,9 @@ func Worker(ctx context.Context, ch chan *models.Event, wg *sync.WaitGroup) {
 		case <-timerChan:
 			event := heap.Pop(eventHeap).(*models.Event)
 
-			log.Printf("Напоминание, до события %s осталось %v минут(а)", event.Event, math.Ceil(time.Until(event.Date).Minutes()))
+			if !event.Deleted {
+				log.Printf("Напоминание, до события %s осталось %v минут(а)", event.Event, math.Ceil(time.Until(event.Date).Minutes()))
+			}
 
 			if eventHeap.Len() > 0 {
 				nextEvent := (*eventHeap)[0]

@@ -51,7 +51,7 @@ func newEventErr(err error, w http.ResponseWriter) {
 	}
 
 	if strings.Contains(evErr.ErrString, "not found") {
-		w.WriteHeader(http.StatusServiceUnavailable)
+		w.WriteHeader(http.StatusNotFound)
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
 	}
@@ -85,7 +85,12 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	h.Ch <- event
 
 	w.WriteHeader(http.StatusOK)
-	newResult([]*models.Event{event}, w)
+
+	buf, err = json.Marshal(&event)
+	if err != nil {
+		newEventErr(err, w)
+	}
+	w.Write(buf)
 }
 
 func (h *Handler) UpdateEvent(w http.ResponseWriter, r *http.Request) {
@@ -94,6 +99,7 @@ func (h *Handler) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		newEventErr(err, w)
+		return
 	}
 	defer func() {
 		err = r.Body.Close()
@@ -110,7 +116,12 @@ func (h *Handler) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	newResult([]*models.Event{event}, w)
+
+	buf, err = json.Marshal(&event)
+	if err != nil {
+		newEventErr(err, w)
+	}
+	w.Write(buf)
 }
 
 func (h *Handler) DeleteEvent(w http.ResponseWriter, r *http.Request) {

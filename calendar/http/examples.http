@@ -1,0 +1,122 @@
+@hostname = localhost:8080
+@userID = ecec1151-c972-433f-9861-6200440ede46
+
+
+### Создание нового события, которое начнется через 3 часа
+< {%
+    const now = new Date();
+    const time1 = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+    request.variables.set("time1", time1.toISOString());
+    client.global.set("now", now.toISOString());
+%}
+
+POST http://{{hostname}}/create_event
+Content-Type: application/json
+
+{
+  "user_id": "{{userID}}",
+  "event": "test1",
+  "date": "{{time1}}"
+}
+
+### Создание нового события, которое начнется через 5 дней
+< {%
+    const now = new Date();
+    const time2 = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000);
+    request.variables.set("time2", time2.toISOString());
+ %}
+
+POST http://{{hostname}}/create_event
+Content-Type: application/json
+
+{
+  "user_id": "{{userID}}",
+  "event": "test2",
+  "date": "{{time2}}"
+}
+
+> {%
+    const data = JSON.parse(response.body);
+
+    client.global.set("eventID", data.event_id)
+ %}
+
+### Создание нового события, которое начнется через 20 дней
+< {%
+    const now = new Date();
+    const time3 = new Date(now.getTime() + 20 * 24 * 60 * 60 * 1000);
+    request.variables.set("time3", time3.toISOString());
+%}
+
+POST http://{{hostname}}/create_event
+Content-Type: application/json
+
+{
+  "user_id": "{{userID}}",
+  "event": "test3",
+  "date": "{{time3}}"
+}
+
+### Обновляем событие, которое начнется через 5 дней. Предыдущее имя test2 обновится на testing.
+< {%
+    const now = new Date();
+    const time2 = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000);
+    request.variables.set("time2", time2.toISOString());
+%}
+
+POST http://{{hostname}}/update_event?id={{eventID}}
+Content-Type: application/json
+
+{
+  "user_id": "{{userID}}",
+  "event": "testing",
+  "date": "{{time2}}"
+}
+
+
+### Получаем все события на сегодня. В выводе должно быть одно событие test1
+GET http://{{hostname}}/events_for_day?user_id={{userID}}&date={{now}}
+
+### Получаем все события на неделю. В выводе должны быть события test1 и testing
+GET http://{{hostname}}/events_for_week?user_id={{userID}}&date={{now}}
+
+### Получаем все события на месяц. В выводе должны быть события test1, testing и test3
+GET http://{{hostname}}/events_for_month?user_id={{userID}}&date={{now}}
+
+### Удаляем событие testing
+POST http://{{hostname}}/delete_event?id={{eventID}}
+
+### Получаем все события на месяц. В выводе отсутствует testing
+GET http://{{hostname}}/events_for_month?user_id={{userID}}&date={{now}}
+
+### Создаем новое событие, которое начнется через 2 часа и 30 секунд. Через 30 секунд получим напоминание. В это время можно сразу отправить следующий запрос.
+< {%
+    const now = new Date();
+    const time4 = new Date(now.getTime() + 2 * 60 * 60 * 1000 + 30 * 1000);
+    request.variables.set("time4", time4.toISOString());
+%}
+
+POST http://{{hostname}}/create_event
+Content-Type: application/json
+
+{
+  "user_id": "{{userID}}",
+  "event": "testNotify1",
+  "date": "{{time4}}"
+}
+
+### Создаем новое событие, которое начнется через час. Так как событие начинается раньше чем через 2 часа, сразу получаем напоминание.
+< {%
+    const now = new Date();
+    const time5 = new Date(now.getTime() + 60 * 60 * 1000);
+    request.variables.set("time5", time5.toISOString());
+%}
+
+POST http://{{hostname}}/create_event
+Content-Type: application/json
+
+{
+  "user_id": "{{userID}}",
+  "event": "testNotify2",
+  "date": "{{time5}}"
+}

@@ -1,6 +1,7 @@
 package business
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -19,7 +20,11 @@ type EventRepository struct {
 func (e *EventRepository) NewEvent(buf []byte) (*models.Event, error) {
 	eventDTO := &models.EventDTO{}
 
-	err := json.Unmarshal(buf, eventDTO)
+	decoder := json.NewDecoder(bytes.NewReader(buf))
+
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(eventDTO)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +37,13 @@ func (e *EventRepository) NewEvent(buf []byte) (*models.Event, error) {
 		Event:    eventDTO.Event,
 	}
 
+	if event.Date.Before(time.Now()) {
+		return nil, errors.New("date is in the past")
+	}
+
 	models.Events = append(models.Events, event)
+
+	log.Printf("Appended event %v", event)
 
 	err = repository.InsertEvent(e.DB, *event)
 	if err != nil {
@@ -45,7 +56,11 @@ func (e *EventRepository) NewEvent(buf []byte) (*models.Event, error) {
 func (e *EventRepository) UpdateEvent(buf []byte, id string) (*models.Event, error) {
 	eventDTO := &models.EventDTO{}
 
-	err := json.Unmarshal(buf, eventDTO)
+	decoder := json.NewDecoder(bytes.NewReader(buf))
+
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(eventDTO)
 	if err != nil {
 		return nil, err
 	}
@@ -65,13 +80,15 @@ func (e *EventRepository) UpdateEvent(buf []byte, id string) (*models.Event, err
 
 	hit := false
 
+	for _, ev := range models.Events {
+		log.Printf("events: %v", ev)
+	}
+
 	for i, ev := range models.Events {
 		if ev.EventID == event.EventID {
-			if ev.Event == event.Event || ev.Date == event.Date {
-				models.Events[i] = event
-				hit = true
-				break
-			}
+			models.Events[i] = event
+			hit = true
+			break
 		}
 	}
 

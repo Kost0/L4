@@ -65,9 +65,8 @@ REST API сервис для сортировки массива чисел.
 ```
 BenchmarkSort-8   	  358591	      4712 ns/op
 ```
----
 
-## Оптимизация
+### Оптимизация
 
 **Опираясь на результаты анализа, ключевой проблемой является неэффективный алгоритм сортировки. Для начала заменим его.**
 
@@ -121,6 +120,13 @@ BenchmarkSort-8   	  358591	      4712 ns/op
 BenchmarkSort-8   	  290648	      3514 ns/op
 ```
 
+### Оптимизация
+
+**Замена алгоритма сортировки значительно улучшила производительность.**
+**Теперь главную нагрузку создает обработка JSON. Следующим шагом заменю стандартный json парсер**
+
+---
+
 ## Версия 1.2 - замена JSON парсера
 
 **Изменения:**
@@ -140,32 +146,39 @@ BenchmarkSort-8   	  290648	      3514 ns/op
 | Метрика | Значение |
 |---------|----------|
 | Success Rate | 100.00% |
-| Mean Latency | 1.522 ms |
-| 50th Percentile | 1.511 ms |
-| 90th Percentile | 1.666 ms |
-| 95th Percentile | 1.742 ms |
-| 99th Percentile | 2.347 ms |
-| Max Latency | 4.242 ms |
+| Mean Latency | 1.062 ms |
+| 50th Percentile | 1.169 ms |
+| 90th Percentile | 1.401 ms |
+| 95th Percentile | 1.55 ms |
+| 99th Percentile | 2ю261 ms |
+| Max Latency | 5.481 ms |
 | Throughput | 50.03 req/s |
 
 ### CPU Профилирование (pprof - 30s)
 
 **Top горячие точки:**
 
-1. **`encoding/json.(*Decoder).Decode`** - **37.20% CPU** (0.61s)
-    - Общие затраты на JSON декодирование
+1. **`handler.easyjson888c126aDecodeGithubComKost0L4InternalHandler`** - **20.59% CPU** (0.21s)
+    - Общие затраты на JSON декодирование (заметно лучше)
 
-2. **`encoding/json.(*Decoder).Encode`** - **16.46% CPU** (0.27s)
-    - Общие затраты на JSON кодирование
+2. **`syscall.Syscall6`** - **20.59% CPU** (0.21s)
+    - Системные вызовы
 
-3. **`http(*response).finishRequest`** - **15.85% CPU** (0.26s)
+3. **`http(*response).finishRequest`** - **19.61% CPU** (0.20s)
     - Затраты на http ответ
 
-4. **`slices.pdqsortOrdered[go shape it]`** - **11.59% CPU** (0.19s)
-    - Значительно улучшена скорость сортировки
+4. **`handler.RequestPayload.MarshalJSON`** - **13.73% CPU** (0.14s)
+    - Общие затраты на JSON кодирование (заметно лучше)
 
 ### Benchmark результаты
 
 ```
 BenchmarkSort-8   	  1587265	      766 ns/op
 ```
+
+### Оптимизация
+
+**Замена стандартного парсера на easyjson заметно улучшила процессы кодирования и декодирования JSON-ов**
+**Дальше попробую отказаться от стандартного http пакета в пользу более быстрого**
+
+---

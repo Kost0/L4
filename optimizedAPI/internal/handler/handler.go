@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"sort"
 )
@@ -13,13 +13,27 @@ type RequestPayload struct {
 func SortNums(w http.ResponseWriter, r *http.Request) {
 	var payload RequestPayload
 
-	err := json.NewDecoder(r.Body).Decode(&payload)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Invalid JSON input", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err = payload.UnmarshalJSON(buf)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	sort.Ints(payload.Numbers)
 
-	json.NewEncoder(w).Encode(payload.Numbers)
+	bytes, err := payload.MarshalJSON()
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(bytes)
 }

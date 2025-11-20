@@ -10,18 +10,10 @@ import (
 
 	"github.com/Kost0/L4/internal/handler"
 	"github.com/go-chi/chi/v5"
+	"github.com/valyala/fasthttp"
 )
 
 func main() {
-	r := chi.NewRouter()
-
-	srv := &http.Server{
-		Addr:    ":8080",
-		Handler: r,
-	}
-
-	r.Post("/sort", handler.SortNums)
-
 	r2 := chi.NewRouter()
 
 	srv2 := &http.Server{
@@ -38,8 +30,8 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("Error starting HTTP server: %v\n", err)
+		if err := fasthttp.ListenAndServe(":8080", handler.RequestHandler); err != nil {
+			log.Fatal(err)
 		}
 	}()
 

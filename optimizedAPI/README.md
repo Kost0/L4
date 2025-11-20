@@ -56,10 +56,6 @@ REST API сервис для сортировки массива чисел.
 4. **`encoding/json.(*Decoder).Decode`** - **25.00% CPU** (0.36s)
     - Общие затраты на JSON декодирование
 
-5. **`net/http` инфраструктура** - **92.36% CPU** (1.33s)
-    - Обработка HTTP соединений
-    - Включает всю цепочку обработки запроса
-
 **Ключевые наблюдения:**
 - Bubble Sort - явное узкое место (46% CPU)
 - JSON десериализация занимает ~25% CPU
@@ -67,10 +63,109 @@ REST API сервис для сортировки массива чисел.
 ### Benchmark результаты
 
 ```
-BenchmarkSort-8   	  925282	      1418 ns/op
+BenchmarkSort-8   	  358591	      4712 ns/op
 ```
 ---
 
 ## Оптимизация
 
 **Опираясь на результаты анализа, ключевой проблемой является неэффективный алгоритм сортировки. Для начала заменим его.**
+
+---
+## Версия 1.1 - замена алгоритма сортировки
+
+**Изменения:**
+
+- Самописный алгоритм пузырьковой сортировки был заменен на sort.Ints (Pattern-Defeating Quick Sort) 
+
+## Анализ производительности
+
+### Результаты нагрузочного тестирования (Vegeta)
+
+**Параметры теста:**
+- Rate: 50 req/s
+- Duration: 30s
+- Total requests: 1500
+
+**Метрики:**
+| Метрика | Значение |
+|---------|----------|
+| Success Rate | 100.00% |
+| Mean Latency | 1.522 ms |
+| 50th Percentile | 1.511 ms |
+| 90th Percentile | 1.666 ms |
+| 95th Percentile | 1.742 ms |
+| 99th Percentile | 2.347 ms |
+| Max Latency | 4.242 ms |
+| Throughput | 50.03 req/s |
+
+### CPU Профилирование (pprof - 30s)
+
+**Top горячие точки:**
+
+1. **`encoding/json.(*Decoder).Decode`** - **37.20% CPU** (0.61s)
+    - Общие затраты на JSON декодирование
+
+2. **`encoding/json.(*Decoder).Encode`** - **16.46% CPU** (0.27s)
+    - Общие затраты на JSON кодирование
+
+3. **`http(*response).finishRequest`** - **15.85% CPU** (0.26s)
+    - Затраты на http ответ
+
+4. **`slices.pdqsortOrdered[go shape it]`** - **11.59% CPU** (0.19s)
+    - Значительно улучшена скорость сортировки
+
+### Benchmark результаты
+
+```
+BenchmarkSort-8   	  290648	      3514 ns/op
+```
+
+## Версия 1.2 - замена JSON парсера
+
+**Изменения:**
+
+- Самописный алгоритм пузырьковой сортировки был заменен на sort.Ints (Pattern-Defeating Quick Sort)
+
+## Анализ производительности
+
+### Результаты нагрузочного тестирования (Vegeta)
+
+**Параметры теста:**
+- Rate: 50 req/s
+- Duration: 30s
+- Total requests: 1500
+
+**Метрики:**
+| Метрика | Значение |
+|---------|----------|
+| Success Rate | 100.00% |
+| Mean Latency | 1.522 ms |
+| 50th Percentile | 1.511 ms |
+| 90th Percentile | 1.666 ms |
+| 95th Percentile | 1.742 ms |
+| 99th Percentile | 2.347 ms |
+| Max Latency | 4.242 ms |
+| Throughput | 50.03 req/s |
+
+### CPU Профилирование (pprof - 30s)
+
+**Top горячие точки:**
+
+1. **`encoding/json.(*Decoder).Decode`** - **37.20% CPU** (0.61s)
+    - Общие затраты на JSON декодирование
+
+2. **`encoding/json.(*Decoder).Encode`** - **16.46% CPU** (0.27s)
+    - Общие затраты на JSON кодирование
+
+3. **`http(*response).finishRequest`** - **15.85% CPU** (0.26s)
+    - Затраты на http ответ
+
+4. **`slices.pdqsortOrdered[go shape it]`** - **11.59% CPU** (0.19s)
+    - Значительно улучшена скорость сортировки
+
+### Benchmark результаты
+
+```
+BenchmarkSort-8   	  1587265	      766 ns/op
+```
